@@ -25,10 +25,10 @@ services:
         sync: false
 
   # 2. Frontend Static Site
-  - type: web
+  - type: static
     name: email-automation-frontend
     env: static
-    plan: free
+    # No plan needed for static sites as they are free by default
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
