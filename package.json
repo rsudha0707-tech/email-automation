@@ -1,27 +1,23 @@
 {
-  "name": "email-automation",
+  "name": "email-automation-portal",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "start": "node index.js",
-    "test-send": "node -e \"require('./mailer').sendNewsletter()\""
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "backend": "cd backend && node server.js",
+    "start": "npm run backend"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rsudha0707-tech/email-automation.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/rsudha0707-tech/email-automation/issues"
-  },
-  "homepage": "https://github.com/rsudha0707-tech/email-automation#readme",
   "dependencies": {
-    "dotenv": "^17.4.2",
-    "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.7"
+    "axios": "^1.16.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.12"
   }
 }
