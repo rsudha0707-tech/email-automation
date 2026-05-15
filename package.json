@@ -1,0 +1,27 @@
+{
+  "name": "email-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test-send": "node -e \"require('./mailer').sendNewsletter()\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rsudha0707-tech/email-automation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rsudha0707-tech/email-automation/issues"
+  },
+  "homepage": "https://github.com/rsudha0707-tech/email-automation#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.7"
+  }
+}
