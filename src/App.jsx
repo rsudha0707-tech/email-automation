@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Upload, Send, Sparkles, ShieldCheck, Mail, FileText, CheckCircle } from 'lucide-react';
 import './App.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
 
 function App() {
   const [files, setFiles] = useState([]);
@@ -11,6 +11,9 @@ function App() {
   const [subject, setSubject] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
   const [content, setContent] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [mode, setMode] = useState('multiple'); // 'single' or 'multiple'
+  const [singleEmail, setSingleEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
@@ -52,7 +55,8 @@ function App() {
   };
 
   const requestOtp = async () => {
-    if (recipients.length === 0 || !content || !subject) {
+    const recipientList = mode === 'single' ? [singleEmail] : recipients;
+    if (recipientList.length === 0 || (mode === 'single' && !singleEmail) || !content || !subject) {
       alert('Please provide subject, content and recipients');
       return;
     }
@@ -72,16 +76,22 @@ function App() {
   const verifyAndSend = async () => {
     setLoading(true);
     try {
-      await axios.post(`${API_BASE}/send-bulk`, {
-        senderEmail: 'rsudha0707@gmail.com',
-        otp,
-        recipients,
-        subject,
-        content
+      const formData = new FormData();
+      formData.append('senderEmail', 'rsudha0707@gmail.com');
+      formData.append('otp', otp);
+      formData.append('recipients', JSON.stringify(mode === 'single' ? [singleEmail] : recipients));
+      formData.append('subject', subject);
+      formData.append('content', content);
+      attachments.forEach(file => formData.append('attachments', file));
+
+      await axios.post(`${API_BASE}/send-bulk`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
       setShowOtp(false);
       setOtp('');
-      setStatus('Campaign sent successfully!');
+      setAttachments([]);
+      setStatus('Campaign sent successfully with attachments!');
       alert('Emails sent to all recipients!');
     } catch (err) {
       console.error(err);
@@ -94,47 +104,82 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Digital Daak Portal</h1>
-        <p>Intelligent Email Automation with AI & File Extraction</p>
+        <h1>Email Automation Portal</h1>
+        <p>Intelligent Bulk Mailing with AI & File Extraction</p>
         {status && <span className="status-badge">{status}</span>}
       </header>
 
       <div className="grid">
         {/* Left Side: Data & Files */}
         <div className="card">
-          <div className="card-title">
-            <FileText size={24} />
-            Data Extraction
-          </div>
-          <div className="file-upload-zone" onClick={() => document.getElementById('fileInput').click()}>
-            <Upload size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
-            <h3>Upload Company Files</h3>
-            <p>Support for Excel, PDF, and Text files</p>
-            <input 
-              id="fileInput" 
-              type="file" 
-              multiple 
-              onChange={handleFileUpload} 
-              style={{ display: 'none' }}
-            />
-          </div>
-          
-          <div className="email-list">
-            <div className="card-title" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-              <CheckCircle size={18} />
-              Recipients ({recipients.length})
+          <div className="card-title" style={{ justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Mail size={24} />
+              Recipients
             </div>
-            {recipients.length > 0 ? (
-              recipients.map((email, i) => (
-                <div key={i} className="email-item">
-                  {email}
-                  <span style={{ color: 'var(--accent)' }}>Active</span>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No recipients yet</p>
-            )}
+            <div className="mode-tabs">
+              <button 
+                className={`tab ${mode === 'multiple' ? 'active' : ''}`}
+                onClick={() => setMode('multiple')}
+              >
+                Bulk
+              </button>
+              <button 
+                className={`tab ${mode === 'single' ? 'active' : ''}`}
+                onClick={() => setMode('single')}
+              >
+                Single
+              </button>
+            </div>
           </div>
+
+          {mode === 'multiple' ? (
+            <>
+              <div className="file-upload-zone" onClick={() => document.getElementById('fileInput').click()}>
+                <Upload size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
+                <h3>Upload Company Files</h3>
+                <p>Support for Excel, PDF, and Text files</p>
+                <input 
+                  id="fileInput" 
+                  type="file" 
+                  multiple 
+                  onChange={handleFileUpload} 
+                  style={{ display: 'none' }}
+                />
+              </div>
+              
+              <div className="email-list">
+                <div className="card-title" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
+                  <CheckCircle size={18} />
+                  Extracted ({recipients.length})
+                </div>
+                {recipients.length > 0 ? (
+                  recipients.map((email, i) => (
+                    <div key={i} className="email-item">
+                      {email}
+                      <span style={{ color: 'var(--accent)' }}>Active</span>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No recipients yet</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="input-group" style={{ marginTop: '1rem' }}>
+              <label>Recipient Email Address</label>
+              <input 
+                type="email" 
+                placeholder="Enter email address (e.g. client@company.com)"
+                value={singleEmail}
+                onChange={(e) => setSingleEmail(e.target.value)}
+                style={{ fontSize: '1.1rem' }}
+              />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '1rem' }}>
+                Mode: Single Mail. Only this person will receive the email.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Side: AI & Content */}
@@ -183,14 +228,30 @@ function App() {
             />
           </div>
 
+          <div className="input-group">
+            <label>Attachments (Optional)</label>
+            <input 
+              type="file" 
+              multiple 
+              onChange={(e) => setAttachments(Array.from(e.target.files))}
+              className="btn-secondary"
+              style={{ width: '100%', padding: '0.5rem' }}
+            />
+            {attachments.length > 0 && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--accent)', marginTop: '0.5rem' }}>
+                📎 {attachments.length} files selected
+              </p>
+            )}
+          </div>
+
           <button 
             className="btn" 
             style={{ width: '100%' }}
             onClick={requestOtp}
-            disabled={loading || recipients.length === 0}
+            disabled={loading || (mode === 'multiple' && recipients.length === 0) || (mode === 'single' && !singleEmail)}
           >
             <Send size={18} />
-            Send to All ({recipients.length})
+            {mode === 'single' ? 'Send Email' : `Send to All (${recipients.length})`}
           </button>
         </div>
       </div>

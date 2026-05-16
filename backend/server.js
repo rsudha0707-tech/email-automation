@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 // --- CONFIGURATION ---
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_URL.startsWith('http')) 
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
   : null;
@@ -39,7 +39,8 @@ const transporter = nodemailer.createTransport({
 // --- HELPER FUNCTIONS ---
 
 const extractEmailsFromText = (text) => {
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  console.log(`Extracting emails from text of length: ${text.length}`);
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
   return text.match(emailRegex) || [];
 };
 
@@ -127,9 +128,10 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-// 4. Verify OTP & Send Bulk Mail
-app.post('/api/send-bulk', async (req, res) => {
-  const { senderEmail, otp, recipients, subject, content } = req.body;
+// 4. Verify OTP & Send Bulk Mail with Attachments
+app.post('/api/send-bulk', upload.array('attachments'), async (req, res) => {
+  const { senderEmail, otp, subject, content } = req.body;
+  const recipients = JSON.parse(req.body.recipients || '[]');
   
   if (!otpStore[senderEmail] || otpStore[senderEmail].otp !== otp || otpStore[senderEmail].expires < Date.now()) {
     return res.status(400).json({ error: 'Invalid or expired OTP' });
@@ -138,6 +140,12 @@ app.post('/api/send-bulk', async (req, res) => {
   // Clear OTP
   delete otpStore[senderEmail];
 
+  // Prepare attachments for Nodemailer
+  const mailAttachments = req.files.map(file => ({
+    filename: file.originalname,
+    path: file.path
+  }));
+
   try {
     // Send in bulk (single message with BCC for privacy)
     await transporter.sendMail({
@@ -145,7 +153,11 @@ app.post('/api/send-bulk', async (req, res) => {
       bcc: recipients.join(','),
       subject: subject,
       text: content,
+      attachments: mailAttachments
     });
+    
+    // Clean up uploaded attachments
+    req.files.forEach(file => fs.unlinkSync(file.path));
     
     res.json({ message: 'Emails sent successfully' });
   } catch (error) {
@@ -154,5 +166,7 @@ app.post('/api/send-bulk', async (req, res) => {
   }
 });
 
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
 module.exports = app;
