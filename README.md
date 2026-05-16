@@ -1,4 +1,4 @@
-# Digital Daak Email Portal 🚀
+#  Email automationPortal 🚀
 
 An intelligent email automation system that extracts data from files (Excel, PDF, Text), uses AI to generate content, and ensures security with OTP verification.
 
