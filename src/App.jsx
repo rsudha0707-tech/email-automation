@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Upload, Send, Sparkles, ShieldCheck, Mail, FileText, CheckCircle } from 'lucide-react';
+import { Upload, Send, Sparkles, ShieldCheck, Mail, FileText, CheckCircle, LogOut } from 'lucide-react';
 import './App.css';
+import Login from './Login';
+import { supabase } from './supabase';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001/api';
 
@@ -18,6 +20,26 @@ function App() {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [status, setStatus] = useState('');
+  const [user, setUser] = useState(null);
+
+  React.useEffect(() => {
+    const savedUser = localStorage.getItem('current_user');
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('current_user');
+  };
+
+  if (!user) {
+    return <Login onLogin={(u) => {
+      setUser(u);
+      localStorage.setItem('current_user', JSON.stringify(u));
+    }} />;
+  }
+
+  const userEmail = user.email;
 
   const handleFileUpload = async (e) => {
     const uploadedFiles = Array.from(e.target.files);
@@ -62,7 +84,7 @@ function App() {
     }
     setLoading(true);
     try {
-      await axios.post(`${API_BASE}/send-otp`, { email: 'rsudha0707@gmail.com' });
+      await axios.post(`${API_BASE}/send-otp`, { email: userEmail });
       setShowOtp(true);
       setStatus('OTP sent to your email');
     } catch (err) {
@@ -77,7 +99,7 @@ function App() {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('senderEmail', 'rsudha0707@gmail.com');
+      formData.append('senderEmail', userEmail);
       formData.append('otp', otp);
       formData.append('recipients', JSON.stringify(mode === 'single' ? [singleEmail] : recipients));
       formData.append('subject', subject);
@@ -104,9 +126,17 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Email Automation Portal</h1>
-        <p>Intelligent Bulk Mailing with AI & File Extraction</p>
-        {status && <span className="status-badge">{status}</span>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ textAlign: 'left' }}>
+            <h1>Email Automation Portal</h1>
+            <p>Welcome, {user.name || userEmail}</p>
+          </div>
+          <button className="btn btn-secondary" onClick={handleLogout}>
+            <LogOut size={18} />
+            Logout
+          </button>
+        </div>
+        {status && <span className="status-badge" style={{ marginTop: '1rem', display: 'inline-block' }}>{status}</span>}
       </header>
 
       <div className="grid">
@@ -262,7 +292,7 @@ function App() {
           <div className="otp-card">
             <ShieldCheck size={64} color="var(--accent)" style={{ marginBottom: '1rem' }} />
             <h2>Security Verification</h2>
-            <p>An OTP has been sent to <strong>rsudha0707@gmail.com</strong>. Please enter it below to confirm mass mailing.</p>
+            <p>An OTP has been sent to <strong>{userEmail}</strong>. Please enter it below to confirm mass mailing.</p>
             
             <div className="otp-inputs">
               <input 

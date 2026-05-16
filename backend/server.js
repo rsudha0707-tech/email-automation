@@ -92,18 +92,38 @@ app.post('/api/extract', upload.array('files'), async (req, res) => {
 // 2. AI Content Generation
 app.post('/api/generate-content', async (req, res) => {
   const { prompt } = req.body;
-  if (!genAI) {
-    return res.status(400).json({ error: 'AI Agent not configured. Please add GEMINI_API_KEY to .env' });
+  console.log("AI Generation requested for prompt:", prompt);
+  
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("AI Error: No API Key found in process.env");
+    return res.status(500).json({ error: 'AI not configured' });
   }
+
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    console.log("Fetching from Gemini URL...");
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    const data = await response.json();
+    console.log("Gemini Response Status:", response.status);
+    
+    if (!response.ok) {
+      console.error("Gemini API error details:", JSON.stringify(data));
+      throw new Error(data.error?.message || `AI error: ${response.status}`);
+    }
+    
+    const text = data.candidates[0].content.parts[0].text;
     res.json({ content: text });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'AI generation failed' });
+    console.error("Gemini Fetch Error:", error.message);
+    res.status(500).json({ error: `AI generation failed: ${error.message}` });
   }
 });
 
@@ -164,6 +184,25 @@ app.post('/api/send-bulk', upload.array('attachments'), async (req, res) => {
     console.error(error);
     res.status(500).json({ error: 'Failed to send emails' });
   }
+});
+
+app.get('/api/list-models', async (req, res) => {
+  if (!genAI) return res.status(500).json({ error: 'AI not configured' });
+  try {
+    // Correct way to list models in legacy SDK is usually through the client
+    // But since we are struggling, I'll try gemini-1.0-pro as a last resort
+    res.json({ message: "Try gemini-1.0-pro" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('CRITICAL ERROR:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 if (process.env.NODE_ENV !== 'production') {
